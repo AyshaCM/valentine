@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>For You ❤️</title>
+
+  <!-- SoundCloud Widget API -->
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root{
+      --bg:#0b0b10;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --muted: rgba(255,255,255,0.75);
+      --accent:#ff4d88;
+    }
+
+    body { font-family: system-ui, Arial; margin: 0; background: var(--bg); color: #fff; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: clamp(16px, 4vw, 28px); }
+    .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: clamp(16px, 4vw, 22px);
+    margin: clamp(18px, 5vw, 28px) 0;
+  }
+    .card:first-of-type{
+      margin-top: 10px;
+    }
+
+
+    h1 { margin: 0 0 8px; font-size: clamp(26px, 4.5vw, 34px); }
+    h2 { margin: 0 0 8px; font-size: clamp(18px, 3.2vw, 22px); }
+    p { line-height: 1.55; margin: 10px 0; }
+    .muted { opacity: .8; color: var(--muted); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .btn { border: 0; padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 650; }
+    .btnPrimary { background: var(--accent); color: #fff; }
+    .btnGhost { background: rgba(255,255,255,0.12); color: #fff; }
+    .btnGhost:hover { background: rgba(255,255,255,0.16); }
+
+    ul { padding-left: 18px; margin: 8px 0 0; }
+    input {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      outline: none;
+    }
+    input:focus { border-color: rgba(255,77,136,0.7); }
+    .hidden { display: none; }
+    .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.12); margin-right:8px; }
+
+    /* ===== Gallery ===== */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (max-width: 720px){
+      .gallery { grid-template-columns: repeat(2, 1fr); }
+    }
+    .shot {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+    .shot img{
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      display:block;
+      transform: scale(1);
+      transition: transform 180ms ease;
+    }
+    .shot:hover img{ transform: scale(1.03); }
+    .cap {
+      position:absolute;
+      left:0; right:0; bottom:0;
+      padding: 10px 10px;
+      background: linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0));
+      font-size: 13px;
+      color: rgba(255,255,255,0.92);
+    }
+
+    /* ===== Lightbox ===== */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.86);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 22px;
+    }
+    .lightbox.open { display: flex; }
+    .lbBox {
+      width: min(980px, 96vw);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .lbTop {
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .lbTitle { font-weight: 650; }
+    .lbImgWrap { background: rgba(0,0,0,0.35); }
+    .lbImg {
+      width: 100%;
+      height: min(70vh, 720px);
+      object-fit: contain;
+      display:block;
+      background: rgba(0,0,0,0.35);
+    }
+    .lbBottom {
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      padding: 10px 12px;
+      gap: 10px;
+    }
+    .lbNav { display:flex; gap: 8px; }
+    .smallBtn{
+      border: 0;
+      padding: 10px 12px; /* slightly larger for phone taps */
+      border-radius: 12px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-weight: 650;
+    }
+    .smallBtn:hover{ background: rgba(255,255,255,0.16); }
+
+    /* ===== Elegant envelope + multi-page letter (Responsive + FIXED nesting) ===== */
+    .envelope-stage{
+    display:flex;
+    justify-content:center;
+    position: relative;
+
+    /* KEY: reserve space above & below so the letter never collides with the title */
+    margin-top: 14px;
+    padding: 56px 0 78px;
+
+    /* this keeps it visually centered inside the card */
+    min-height: clamp(320px, 55vw, 520px);
+  }
+
+
+
+    .glow{
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.10),
+        0 12px 40px rgba(255,77,136,0.18);
+      transition: box-shadow 260ms ease, transform 260ms ease;
+    }
+    .glow:hover{
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.14),
+        0 18px 55px rgba(255,77,136,0.24);
+    }
+
+    /* IMPORTANT: envelope is a DIV (not a button) so inner buttons are valid */
+    .envelope{
+      width: min(420px, 100%);
+      aspect-ratio: 16 / 11;
+      height: auto;
+
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      border-radius: 22px;
+      outline: none;
+
+      display: block;
+      margin: 0 auto;
+      isolation: isolate;
+      border: 0;
+    }
+    .envelope:focus-visible{
+      box-shadow: 0 0 0 3px rgba(255,77,136,0.35), 0 0 0 1px rgba(255,255,255,0.15);
+    }
+
+    .env-back{
+      position:absolute; inset:0;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+
+    .env-front{
+      position:absolute; inset:0;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+      border: 1px solid rgba(255,255,255,0.10);
+      clip-path: polygon(0 42%, 50% 72%, 100% 42%, 100% 100%, 0 100%);
+      pointer-events: none;
+    }
+
+    .env-flap{
+      position:absolute; inset:0;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.10);
+      clip-path: polygon(0 0, 100% 0, 50% 58%);
+      transform-origin: top center;
+      transform: rotateX(0deg);
+      transition: transform 700ms cubic-bezier(.2,.8,.2,1);
+      pointer-events: none;
+    }
+
+    .tap-hint{
+      position:absolute;
+      left:50%; top:50%;
+      transform: translate(-50%, -50%);
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.92);
+      pointer-events: none;
+      transition: opacity 250ms ease;
+      z-index: 3;
+    }
+    
+
+    .letter{
+      position:absolute;
+      left: 50%;
+      bottom: 12%;
+      transform: translate(-50%, 18px);
+
+      width: min(360px, calc(100% - 36px));
+      height: clamp(190px, 52vw, 255px);
+
+      border-radius: 16px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+      overflow: hidden;
+
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 700ms cubic-bezier(.2,.8,.2,1), opacity 450ms ease;
+      z-index: 2;
+    }
+
+    .letter-top{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .stamp{
+      width: 30px; height: 30px;
+      display:flex; align-items:center; justify-content:center;
+      border-radius: 10px;
+      background: rgba(255,77,136,0.18);
+      border: 1px solid rgba(255,77,136,0.28);
+    }
+    .page-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{
+      width: 7px; height: 7px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.25);
+    }
+    .dot.active{ background: rgba(255,77,136,0.95); }
+
+    .letter-body{
+      padding: 12px 14px;
+      height: calc(100% - 44px - 54px);
+      overflow: hidden;
+    }
+    .letter-body h3{ margin: 0 0 6px; font-size: 16px; }
+    .letter-body p, .letter-body li{
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.92);
+    }
+    .letter-body ul{ margin: 6px 0 0; padding-left: 18px; }
+    .signature{ margin-top: 10px; opacity: 0.9; font-weight: 700; }
+
+    .page{ display:none; }
+    .page.active{ display:block; }
+
+    .letter-controls{
+      position:absolute;
+      left:0; right:0; bottom:0;
+      padding: 10px 12px;
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.22);
+    }
+
+    .btnAccent{ background: rgba(255,77,136,0.88) !important; }
+    .btnAccent:hover{ background: rgba(255,77,136,1) !important; }
+
+    .envelope.open .env-flap{ transform: rotateX(160deg); }
+    .envelope.open .letter{
+      transform: translate(-50%, -32%);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .envelope.open .tap-hint{ opacity: 0; }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 600ms ease, transform 600ms ease;
+      will-change: opacity, transform;
+    }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .reveal { transition: none; transform: none; opacity: 1; }
+    }
+
+    /* ===== Floating hearts ===== */
+    .hearts-layer{ position: relative; height: 0; }
+    .heart{
+      position: fixed;
+      left: 0; top: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 8px 18px rgba(255,77,136,0.25));
+      animation: floatUp 2200ms ease-in forwards;
+      z-index: 60;
+    }
+    @keyframes floatUp{
+      0%   { opacity: 0; transform: translate(var(--x), var(--y)) scale(0.9); }
+      15%  { opacity: 0.95; }
+      100% { opacity: 0; transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) - 180px)) scale(1.35); }
+    }
+
+    /* Small phone polish */
+    @media (max-width: 420px){
+      .letter-body p, .letter-body li{ font-size: 13px; }
+    }
+
+    @keyframes envelopePulse {
+    0%, 100% { transform: translateY(0); box-shadow: 0 0 0 1px rgba(255,255,255,0.10), 0 12px 40px rgba(255,77,136,0.16); }
+    50%      { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 20px 65px rgba(255,77,136,0.28); }
+  }
+
+  /* pulse only when closed */
+  .envelope.glow:not(.open){
+    animation: envelopePulse 2.6s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .envelope.glow:not(.open){ animation: none; }
+  }
+
+  /* iPhone/Android tuning */
+  @media (max-width: 430px){
+    .row { gap: 8px; }
+    .btn { padding: 10px 12px; border-radius: 12px; }
+    .smallBtn{ padding: 10px 12px; }
+
+    .envelope{
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .envelope-stage{
+      padding: 44px 0 72px;
+      min-height: 420px;
+    }
+
+    .letter{
+      width: calc(100% - 26px);
+      height: clamp(210px, 62vw, 280px);
+    }
+
+    .letter-body p, .letter-body li { font-size: 13px; }
+  }
+
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="card">
+      <h1>Hey love ❤️</h1>
+      <p class="muted">I made you something small.</p>
+
+      <p id="letterIntro">
+        Hey Gaar,
+        You've always been there for me whenever I needed you. You complete me in things I never think of. I love the companionship which we have and I love that I have you in my life.
+        I am greatful that I got to know you and my life wouldn't have been the same without you. Thank you being you and blessing my life with your presence. 
+        Thank you for being who you are and what you are to me. I love you and I'll always keep loving you.
+        Happy Valentine my love.
+      </p>
+
+      <div class="row" style="margin-top:10px;">
+      <button class="btn btnPrimary" id="revealBtn" type="button">Reveal the surprise</button>
+
+      <button class="btn btnGhost" id="playPauseBtn" type="button">Play our song</button>
+      <button class="btn btnGhost" id="prevTrackBtn" type="button">◀</button>
+      <button class="btn btnGhost" id="nextTrackBtn" type="button">▶</button>
+
+      <!-- <span class="muted" id="trackLabel">Mixtape: track 1/3</span> -->
+    </div>
+
+    <!-- <p class="muted" style="margin-top:10px;">
+      Tap Play to start the mixtape 🎧
+    </p> -->
+
+    </div>
+
+    <!-- Hidden SoundCloud iframe (kept OUTSIDE layout rows) -->
+    <div style="position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;">
+      <iframe
+        id="sc-player"
+        width="1"
+        height="1"
+        scrolling="no"
+        frameborder="no"
+        allow="autoplay"
+        src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/2190891395&color=%23ff4d88&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false">
+      </iframe>
+    </div>
+
+
+    <div class="card">
+      <h2>A letter for you 💌</h2>
+      <p class="muted">Tap the envelope to open. Then flip through the pages.</p>
+
+      <div class="hearts-layer" id="heartsLayer" aria-hidden="true"></div>
+
+      <div class="envelope-stage">
+        <!-- IMPORTANT: this is a DIV (not a button) to avoid broken layout -->
+        <div class="envelope glow" id="envelope" role="button" tabindex="0" aria-label="Open envelope">
+          <div class="env-back"></div>
+          <div class="env-front"></div>
+          <div class="env-flap"></div>
+
+          <div class="letter" id="letterCard" aria-hidden="true">
+            <div class="letter-top">
+              <div class="stamp">💗</div>
+              <div class="page-dots" id="pageDots"></div>
+            </div>
+
+            <div class="letter-body">
+              <section class="page active">
+                <h3>Happy Valentine’s Day, love</h3>
+                <p>
+                  I feel lucky to have you in my life.
+                  Thank you for having me.
+                </p>
+                <p class="signature">I wolf you :3</p>
+              </section>
+
+              <section class="page">
+                <h3>Three things I adore</h3>
+                <ul>
+                  <li>I cannot stop it in three things, but still I'll say 2</li>
+                  <li>Your smile melts my heart</li>
+                  <li>I adore how safe you make me feel around you</li>
+                </ul>
+              </section>
+
+              <section class="page">
+                <h3>A tiny promise</h3>
+                <p>
+                  I'll choose you over everything everyday within a heart beat.
+                </p>
+                <p class="muted" style="margin-top:10px;">
+                  (There’s a surprise in the page below 👀)
+                </p>
+              </section>
+
+              <section class="page">
+                <h3>Voucher ✨</h3>
+                <p><strong>Redeem anytime:</strong></p>
+                <ul>
+                  <li>One planned date (you pick the vibe)</li>
+                  <li>One tight hug when we meet</li>
+                  <li>We play games with our phone's off</li>
+                </ul>
+              </section>
+
+              <section class="page">
+                <h3>Will you be my Valentine?</h3>
+                <p><strong>Perks:</strong></p>
+                <ul>
+                  <li>If yes, then I get to go on a date with you</li>
+                  <li>Please say "Yes"</li>
+                </ul>
+              </section>
+            </div>
+
+            <div class="letter-controls">
+              <button class="smallBtn" id="prevPage" type="button">← Prev</button>
+              <button class="smallBtn btnAccent" id="nextPage" type="button">Next →</button>
+            </div>
+          </div>
+
+          <div class="tap-hint" id="tapHint">Tap to open</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Us, in photos 📸</h2>
+
+      <div class="gallery" id="gallery"></div>
+
+      
+    </div>
+
+    <div class="card">
+      <h2>Choose our date</h2>
+      <p class="muted">Pick one and I’ll make it happen.</p>
+      <div class="row">
+        <button class="btn btnGhost" type="button" onclick="pick('Cozy night in: food + movie + no phones + home cleaning')">Cozy night in</button>
+        <button class="btn btnGhost" type="button" onclick="pick('A walk (I can pick the place) + hot beverage + photos (in our new cam)')">Walk + hot chocolate</button>
+        <button class="btn btnGhost" type="button" onclick="pick('You choose the first stop, I choose the next')">Surprise day</button>
+        <button class="btn btnGhost" type="button" onclick="pick('I choose your outfit and you choose mine')">Pick each others outfit</button>
+        <button class="btn btnGhost" type="button" onclick="pick('We will go for a pottery making or cermaic painting date')">Pottery or ceramic date</button>
+      </div>
+      <p style="margin-top:12px;">Selected: <strong id="picked">Nothing yet</strong></p>
+    </div>
+
+    <div class="card hidden" id="surprise">
+      <h2>The surprise ✨</h2>
+      <p id="secretText">You’re my favorite place to be.</p>
+
+      <p class="muted">Enter the “password” (something only you two know):</p>
+      <div class="row">
+        <input id="pw" placeholder="e.g. the nickname you call her" />
+        <button class="btn btnPrimary" type="button" onclick="checkPw()">Unlock</button>
+      </div>
+      <p id="unlockMsg" class="muted"></p>
+
+      <div id="unlocked" class="hidden">
+        <p style="margin-top:12px;"><strong>Voucher:</strong> One planned date + one handwritten letter + one long hug.</p>
+        <p class="muted">(Customize this to something personal.)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox modal -->
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <div class="lbBox" role="dialog" aria-modal="true">
+      <div class="lbTop">
+        <div class="lbTitle" id="lbTitle">Photo</div>
+        <button class="smallBtn" id="lbClose" type="button">Close ✕</button>
+      </div>
+
+      <div class="lbImgWrap">
+        <img class="lbImg" id="lbImg" alt="Selected photo" />
+      </div>
+
+      <div class="lbBottom">
+        <div class="muted" id="lbCaption"></div>
+        <div class="lbNav">
+          <button class="smallBtn" id="lbPrev" type="button">← Prev</button>
+          <button class="smallBtn" id="lbNext" type="button">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**********************
+     * CUSTOMIZE THESE
+     **********************/
+    const REAL_PW = "2094";
+    const PHOTOS = [
+    { src: "./photos/1.jpeg", caption: "That day I couldn’t stop smiling." },
+    { src: "./photos/2.jpeg", caption: "My favorite kind of chaos: you." },
+    { src: "./photos/3.jpeg", caption: "One of my favourite picture" },
+    { src: "./photos/4.jpeg", caption: "We look good together. That’s it!" },
+    { src: "./photos/5.jpeg", caption: "Proof that I’m obsessed." },
+    { src: "./photos/6.jpeg", caption: "My favourites <3" },
+  ];
+
+
+    /**********************
+     * Surprise section
+     **********************/
+    const revealBtn = document.getElementById("revealBtn");
+    const surprise = document.getElementById("surprise");
+
+    revealBtn.addEventListener("click", () => surprise.classList.remove("hidden"));
+
+    function pick(text){ document.getElementById("picked").textContent = text; }
+
+    function checkPw(){
+      const v = (document.getElementById("pw").value || "").trim();
+      const msg = document.getElementById("unlockMsg");
+      const unlocked = document.getElementById("unlocked");
+      if (v.toLowerCase() === REAL_PW.toLowerCase()){
+        msg.textContent = "Unlocked ❤️";
+        unlocked.classList.remove("hidden");
+      } else {
+        msg.textContent = "Nope 😄 (hint: something only we would know)";
+      }
+    }
+
+    /**********************
+     * Gallery + Lightbox
+     **********************/
+    const galleryEl = document.getElementById("gallery");
+    const lightbox = document.getElementById("lightbox");
+    const lbImg = document.getElementById("lbImg");
+    const lbTitle = document.getElementById("lbTitle");
+    const lbCaption = document.getElementById("lbCaption");
+    const lbClose = document.getElementById("lbClose");
+    const lbPrev = document.getElementById("lbPrev");
+    const lbNext = document.getElementById("lbNext");
+
+    let currentIndex = 0;
+
+    function renderGallery(){
+      galleryEl.innerHTML = "";
+      PHOTOS.forEach((p, idx) => {
+        const item = document.createElement("div");
+        item.className = "shot";
+        item.innerHTML = `
+          <img src="${p.src}" alt="Photo ${idx+1}" loading="lazy" />
+          <div class="cap">${p.caption || ""}</div>
+        `;
+        item.addEventListener("click", () => openLightbox(idx));
+        galleryEl.appendChild(item);
+      });
+    }
+
+    function openLightbox(idx){
+      currentIndex = idx;
+      updateLightbox();
+      lightbox.classList.add("open");
+      lightbox.setAttribute("aria-hidden", "false");
+    }
+
+    function closeLightbox(){
+      lightbox.classList.remove("open");
+      lightbox.setAttribute("aria-hidden", "true");
+    }
+
+    function updateLightbox(){
+      const p = PHOTOS[currentIndex];
+      lbImg.src = p.src;
+      lbTitle.textContent = `Photo ${currentIndex + 1} / ${PHOTOS.length}`;
+      lbCaption.textContent = p.caption || "";
+    }
+
+    function prev(){
+      currentIndex = (currentIndex - 1 + PHOTOS.length) % PHOTOS.length;
+      updateLightbox();
+    }
+
+    function next(){
+      currentIndex = (currentIndex + 1) % PHOTOS.length;
+      updateLightbox();
+    }
+
+    lbClose.addEventListener("click", closeLightbox);
+    lbPrev.addEventListener("click", prev);
+    lbNext.addEventListener("click", next);
+
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!lightbox.classList.contains("open")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    });
+
+    renderGallery();
+
+    /**********************
+     * Envelope + multi-page letter + hearts
+     **********************/
+    const envelope = document.getElementById("envelope");
+    const letterCard = document.getElementById("letterCard");
+    const tapHint = document.getElementById("tapHint");
+
+    const pages = Array.from(letterCard.querySelectorAll(".page"));
+    const prevBtn = document.getElementById("prevPage");
+    const nextBtn = document.getElementById("nextPage");
+    const pageDots = document.getElementById("pageDots");
+
+    let isOpen = false;
+    let pageIndex = 0;
+
+    function renderDots(){
+      pageDots.innerHTML = "";
+      pages.forEach((_, i) => {
+        const d = document.createElement("div");
+        d.className = "dot" + (i === pageIndex ? " active" : "");
+        pageDots.appendChild(d);
+      });
+    }
+
+    function showPage(i){
+      pageIndex = Math.max(0, Math.min(pages.length - 1, i));
+      pages.forEach((p, idx) => p.classList.toggle("active", idx === pageIndex));
+
+      prevBtn.disabled = pageIndex === 0;
+      nextBtn.disabled = pageIndex === pages.length - 1;
+      prevBtn.style.opacity = prevBtn.disabled ? "0.6" : "1";
+      nextBtn.style.opacity = nextBtn.disabled ? "0.6" : "1";
+
+      renderDots();
+    }
+
+    function popHearts(count = 10){
+      const rect = envelope.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      for (let i = 0; i < count; i++){
+        const h = document.createElement("div");
+        h.className = "heart";
+        h.textContent = Math.random() > 0.35 ? "💗" : "✨";
+
+        const x = centerX + (Math.random() * 120 - 60);
+        const y = centerY + (Math.random() * 70 - 35);
+        const dx = (Math.random() * 90 - 45);
+
+        h.style.setProperty("--x", `${x}px`);
+        h.style.setProperty("--y", `${y}px`);
+        h.style.setProperty("--dx", `${dx}px`);
+        h.style.fontSize = `${14 + Math.random() * 14}px`;
+
+        document.body.appendChild(h);
+        h.addEventListener("animationend", () => h.remove());
+      }
+    }
+
+    function openEnvelope(){
+      isOpen = true;
+      envelope.classList.add("open");
+      letterCard.setAttribute("aria-hidden", "false");
+      tapHint.textContent = "💌";
+      popHearts(14);
+      showPage(0);
+    }
+
+    function closeEnvelope(){
+      isOpen = false;
+      envelope.classList.remove("open");
+      letterCard.setAttribute("aria-hidden", "true");
+      tapHint.textContent = "Tap to open";
+    }
+
+    envelope.addEventListener("click", (e) => {
+      // Don't toggle when clicking controls
+      if (e.target === prevBtn || e.target === nextBtn) return;
+      if (!isOpen) openEnvelope();
+      else closeEnvelope();
+    });
+
+    // keyboard: Enter/Space toggles envelope
+    envelope.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        envelope.click();
+      }
+    });
+
+    prevBtn.addEventListener("click", (e) => { e.stopPropagation(); showPage(pageIndex - 1); popHearts(4); });
+    nextBtn.addEventListener("click", (e) => { e.stopPropagation(); showPage(pageIndex + 1); popHearts(4); });
+
+    document.addEventListener("keydown", (e) => {
+      if (!isOpen) return;
+      if (e.key === "Escape") closeEnvelope();
+      if (e.key === "ArrowLeft") showPage(pageIndex - 1);
+      if (e.key === "ArrowRight") showPage(pageIndex + 1);
+    });
+
+    showPage(0);
+
+    /**********************
+     * SoundCloud Mixtape (Hidden Player)
+     **********************/
+    const scIframe = document.getElementById("sc-player");
+    const scWidget = SC.Widget(scIframe);
+
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const prevTrackBtn = document.getElementById("prevTrackBtn");
+    const nextTrackBtn = document.getElementById("nextTrackBtn");
+    const trackLabel = document.getElementById("trackLabel");
+
+    let isPlaying = false;
+    let currentmusicIndex = 0;
+    let trackCount = 3; // your mixtape has 3 songs
+
+    function updateLabel(){
+      trackLabel.textContent = `Mixtape: track ${currentmusicIndex + 1}/${trackCount}`;
+      playPauseBtn.textContent = isPlaying ? "Pause" : "Play";
+    }
+
+    // When iframe loads, we can fetch playlist info
+    scWidget.bind(SC.Widget.Events.READY, () => {
+      scWidget.getSounds((sounds) => {
+        if (sounds && sounds.length) {
+          trackCount = sounds.length; // should be 3
+          updateLabel();
+        }
+      });
+    });
+
+    // Listen to play/pause events
+    scWidget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; updateLabel(); });
+    scWidget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; updateLabel(); });
+    scWidget.bind(SC.Widget.Events.FINISH, () => {
+      // auto next when a track ends
+      scWidget.next();
+    });
+
+    // Track changes
+    scWidget.bind(SC.Widget.Events.PLAY_PROGRESS, () => {
+      scWidget.getCurrentSoundIndex((i) => {
+        if (typeof i === "number" && i !== currentIndex) {
+          currentIndex = i;
+          updateLabel();
+        }
+      });
+    });
+
+    // Controls
+    playPauseBtn.addEventListener("click", () => {
+      if (!isPlaying) scWidget.play();
+      else scWidget.pause();
+    });
+
+    nextTrackBtn.addEventListener("click", () => scWidget.next());
+    prevTrackBtn.addEventListener("click", () => scWidget.prev());
+
+    // initial
+    updateLabel();
+
+    letterCard.addEventListener("click", (e) => e.stopPropagation());
+
+    // Scroll reveal for cards
+    const revealEls = document.querySelectorAll(".card");
+    revealEls.forEach(el => el.classList.add("reveal"));
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add("is-visible");
+      });
+    }, { threshold: 0.12 });
+
+    revealEls.forEach(el => io.observe(el));
+
+
+  </script>
+</body>
+</html>
