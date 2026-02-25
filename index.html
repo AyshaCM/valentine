@@ -427,7 +427,7 @@
       <button class="btn btnGhost" id="prevTrackBtn" type="button">◀</button>
       <button class="btn btnGhost" id="nextTrackBtn" type="button">▶</button>
 
-      <!-- <span class="muted" id="trackLabel">Mixtape: track 1/3</span> -->
+      <span class="muted" id="trackLabel">Mixtape: track 1/3</span>
     </div>
 
     <!-- <p class="muted" style="margin-top:10px;">
@@ -812,47 +812,67 @@
     const playPauseBtn = document.getElementById("playPauseBtn");
     const prevTrackBtn = document.getElementById("prevTrackBtn");
     const nextTrackBtn = document.getElementById("nextTrackBtn");
+    // trackLabel is optional (you commented it out)
     const trackLabel = document.getElementById("trackLabel");
 
     let isPlaying = false;
-    let currentmusicIndex = 0;
-    let trackCount = 3; // your mixtape has 3 songs
+    let currentMusicIndex = 0;
+    let trackCount = 3; // will be overwritten by playlist length
 
-    function updateLabel(){
-      trackLabel.textContent = `Mixtape: track ${currentmusicIndex + 1}/${trackCount}`;
+    function updateUI(){
       playPauseBtn.textContent = isPlaying ? "Pause our song" : "Play our song";
+
+      // only update label if it exists in HTML
+      if (trackLabel) {
+        trackLabel.textContent = `Mixtape: track ${currentMusicIndex + 1}/${trackCount}`;
+      }
     }
 
-    // When iframe loads, we can fetch playlist info
+    // READY
     scWidget.bind(SC.Widget.Events.READY, () => {
       scWidget.getSounds((sounds) => {
         if (sounds && sounds.length) {
-          trackCount = sounds.length; // should be 3
-          updateLabel();
+          trackCount = sounds.length;
         }
+        // also get current track index once
+        scWidget.getCurrentSoundIndex((i) => {
+          if (typeof i === "number") currentMusicIndex = i;
+          updateUI();
+        });
       });
     });
 
-    // Listen to play/pause events
-    scWidget.bind(SC.Widget.Events.PLAY, () => { isPlaying = true; updateLabel(); });
-    scWidget.bind(SC.Widget.Events.PAUSE, () => { isPlaying = false; updateLabel(); });
+    // PLAY / PAUSE / FINISH
+    scWidget.bind(SC.Widget.Events.PLAY, () => {
+      isPlaying = true;
+      updateUI();
+    });
+
+    scWidget.bind(SC.Widget.Events.PAUSE, () => {
+      isPlaying = false;
+      updateUI();
+    });
+
     scWidget.bind(SC.Widget.Events.FINISH, () => {
-      // auto next when a track ends
+      // go next; PLAY event will fire after next starts
       scWidget.next();
     });
 
-    // Track changes
+    // Track index changes (throttle-ish by only reacting to changes)
+    let lastIndex = -1;
     scWidget.bind(SC.Widget.Events.PLAY_PROGRESS, () => {
       scWidget.getCurrentSoundIndex((i) => {
-        if (typeof i === "number" && i !== currentIndex) {
-          currentIndex = i;
-          updateLabel();
+        if (typeof i === "number" && i !== lastIndex) {
+          lastIndex = i;
+          currentMusicIndex = i;
+          updateUI();
         }
       });
     });
 
     // Controls
     playPauseBtn.addEventListener("click", () => {
+      // user gesture triggers audio — good for mobile autoplay rules
       if (!isPlaying) scWidget.play();
       else scWidget.pause();
     });
@@ -860,8 +880,8 @@
     nextTrackBtn.addEventListener("click", () => scWidget.next());
     prevTrackBtn.addEventListener("click", () => scWidget.prev());
 
-    // initial
-    updateLabel();
+    // Initial UI
+    updateUI();
 
     letterCard.addEventListener("click", (e) => e.stopPropagation());
 
@@ -881,5 +901,6 @@
   </script>
 </body>
 </html>
+
 
 
